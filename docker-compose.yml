@@ -1,0 +1,49 @@
+version: '3.8'
+
+services:
+  revol-store-db:
+    image: mysql:8.0
+    container_name: revol-store-db
+    environment:
+      MYSQL_DATABASE: revol_store
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:-secret}
+      MYSQL_USER: ${DB_USERNAME:-root}
+      MYSQL_PASSWORD: ${DB_PASSWORD:-secret}
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    networks:
+      - revol-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  revol-store-api:
+    build: .
+    container_name: revol-store-api
+    ports:
+      - "8080:8080"
+    environment:
+      - SPRING_PROFILES_ACTIVE=prod
+      - DB_USERNAME=${DB_USERNAME:-root}
+      - DB_PASSWORD=${DB_PASSWORD:-secret}
+      - JWT_SECRET=${JWT_SECRET:-secret}
+      - TMDB_API_KEY=${TMDB_API_KEY}
+    depends_on:
+      revol-store-db:
+        condition: service_healthy
+    volumes:
+      - uploads_data:/app/uploads
+    networks:
+      - revol-network
+
+volumes:
+  mysql_data:
+  uploads_data:
+
+networks:
+  revol-network:
+    driver: bridge
